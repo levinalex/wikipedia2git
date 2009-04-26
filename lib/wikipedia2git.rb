@@ -99,10 +99,9 @@ if __FILE__ == $0
   last_commit = nil
 
   article.revisions.each do |r|
-    p [r.timestamp, r.user].join(" - ")
+    puts [r.timestamp, r.user].join(" - ")
 
     user = Grit::Actor.new(r.user, r.user)
-    # timestamp = r.timestamp
 
     ENV["GIT_AUTHOR_DATE"] = r.timestamp.to_s
 
