@@ -1,22 +1,6 @@
 require 'httparty'
 require 'grit'
-
-class String
-  def excerpt(len = 30)
-    str = self.gsub(/[^a-z0-9 ]/i, "")
-    if str.length < len
-      str
-    else
-      str[0..len] + "..."
-    end
-  end
-end
-
-class NilClass
-  def excerpt
-    nil
-  end
-end
+require 'pathname'
 
 module Wikipedia
 
@@ -63,7 +47,6 @@ module Wikipedia
       nextquery = {}
       while true
         result = self.class.get('', :query => {:pageids => @pageid}.merge(nextquery))
-        $stderr.puts result.inspect
         @revs = result["query"]["pages"][@pageid]["revisions"].each do |rev|
           yield Revision.new(@article, rev)
         end
@@ -80,7 +63,7 @@ module Wikipedia
 
   class Article
     include HTTParty
-    base_uri "http://en.wikipedia.org"
+    base_uri "http://en.wikipedia.org/w/api.php"
 
     def initialize(name)
       @name = name
@@ -88,7 +71,7 @@ module Wikipedia
 
     def pageid
       @pageid ||= begin
-        result = self.class.get('/w/api.php',
+        result = self.class.get('',
           :query => {
             :action => :query ,
             :prop => :revisions,
@@ -105,29 +88,24 @@ module Wikipedia
   end
 end
 
-class Time
-
-  class << self
-  def self.now
-    old_now - 60*60*24*360
-  end
-  alias_method :old_now, :now
-  end
-end
 
 if __FILE__ == $0
-  article = Wikipedia::Article.new(ARGV[0] || "Eel")
-  repo = Grit::Repo.init_bare("/Users/levin/grit.git")
-  last_commit = nil # repo.log.first rescue nil
+  article = Wikipedia::Article.new(ARGV[0] || "Main Page")
+  id = article.pageid
+  dir = Pathname.new("cache").join(article.pageid)
+  FileUtils.mkdir_p(dir)
+
+  repo = Grit::Repo.init_bare(dir.join("#{article.pageid}.git"))
+  last_commit = nil
 
   article.revisions.each do |r|
-    p [r.timestamp, "%-40s" % r.comment.excerpt, "%-40s" % r.content.excerpt, r.user].join(" - ")
+    p [r.timestamp, r.user].join(" - ")
 
     user = Grit::Actor.new(r.user, r.user)
-    # last_tree = last_commit.tree.id rescue nil
+    # timestamp = r.timestamp
 
-    # index = repo.index
-    # index.read_tree(last_tree) if last_tree
+    ENV["GIT_AUTHOR_DATE"] = r.timestamp.to_s
+
     index = repo.index
     index.add("article", r.content)
     last_commit = index.commit(r.comment, last_commit, user)
