@@ -1,0 +1,7 @@
+= wikipedia2git
+
+Description goes here.
+
+== Copyright
+
+Copyright (c) 2009 "Levin Alexander". See LICENSE for details.
